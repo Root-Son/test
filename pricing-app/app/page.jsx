@@ -70,14 +70,10 @@ export default function Dashboard() {
   const [propName, setPropName] = useState(PROP_NAMES[0])
   const [roomTypes, setRoomTypes] = useState(() => Object.fromEntries(PROP_NAMES.map(p => [p, makeRoomTypes(p)])))
   const [roomId, setRoomId] = useState('r0')
-  const [dateTypes, setDateTypes] = useState(['평일'])
-  const [months, setMonths] = useState([])
-  const toggleDT = (dt) => setDateTypes(prev =>
-    prev.includes(dt) ? (prev.length > 1 ? prev.filter(x => x !== dt) : prev) : [...prev, dt]
-  )
-  const toggleMonth = (m) => setMonths(prev =>
-    prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
-  )
+  const [dateTypes, setDateTypes] = useState('평일')
+  const [months, setMonths] = useState(null)
+  const toggleDT = (dt) => setDateTypes(dt)
+  const toggleMonth = (m) => setMonths(prev => prev === m ? null : m)
   const [matrix, setMatrix] = useState(BASE_MATRIX)
   const [tab, setTab] = useState('pace')
   const [liveOCC, setLiveOCC] = useState(35)
@@ -94,7 +90,7 @@ export default function Dashboard() {
   const room = rooms?.find(r => r.id === roomId) || rooms?.[0]
   const revPAR = room?.targetRevPAR
   const hasRevPAR = revPAR && revPAR > 0
-  const dateType = dateTypes[0] || '평일'
+  const dateType = dateTypes || '평일'
   const baseADR = useMemo(() => getADR(revPAR, dateType, prop.dtMult), [revPAR, dateType, prop])
 
   const priceTable = useMemo(() => {
@@ -449,8 +445,8 @@ export default function Dashboard() {
             })
             return result
           }
-          const activeDTs = dateTypes.length ? dateTypes : ['평일']
-          const activePace = getFilteredDist(propName, activeDTs, months, room?.name)
+          const activeDTs = [dateTypes || '평일']
+          const activePace = getFilteredDist(propName, activeDTs, months ? [months] : [], room?.name)
           const distData = PACE_BANDS.map(band => {
             const row = { band }
             activeDTs.forEach(dt => { row[dt] = activePace?.[dt]?.[band] ?? 0 })
@@ -474,17 +470,17 @@ export default function Dashboard() {
                 <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16, alignItems:'center' }}>
                   <span style={{ fontSize:11, fontWeight:700, color:'#64748b', marginRight:2 }}>날짜유형</span>
                   {DATE_TYPES.map(dt => {
-                    const c = DATE_TYPE_COLORS[dt]; const on = dateTypes.includes(dt)
+                    const c = DATE_TYPE_COLORS[dt]; const on = dateTypes === dt
                     return <button key={dt} onClick={() => toggleDT(dt)} style={{ padding:'5px 14px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', border:`1.5px solid ${on?c:'#e2e8f0'}`, background:on?`${c}18`:'#fff', color:on?c:'#94a3b8', fontWeight:on?700:500, fontSize:12 }}>{dt}</button>
                   })}
                   <div style={{ width:1, height:20, background:'#e2e8f0', margin:'0 4px' }} />
                   <span style={{ fontSize:11, fontWeight:700, color:'#64748b', marginRight:2 }}>월</span>
                   {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
-                    const on = months.includes(m)
+                    const on = months === m
                     return <button key={m} onClick={() => toggleMonth(m)} style={{ padding:'5px 8px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', border:`1.5px solid ${on?'#6366f1':'#e2e8f0'}`, background:on?'#eef2ff':'#fff', color:on?'#6366f1':'#94a3b8', fontWeight:on?700:500, fontSize:11, minWidth:34 }}>{m}월</button>
                   })}
-                  {(dateTypes.length !== 1 || dateTypes[0] !== '평일' || months.length > 0) && (
-                    <button onClick={() => { setDateTypes(['평일']); setMonths([]) }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #fca5a5', background:'#fef2f2', color:'#ef4444', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>초기화</button>
+                  {(dateTypes !== '평일' || months !== null) && (
+                    <button onClick={() => { setDateTypes('평일'); setMonths(null) }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #fca5a5', background:'#fef2f2', color:'#ef4444', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>초기화</button>
                   )}
                 </div>
                 <div style={{ display: 'flex', height: 52, borderRadius: 10, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
@@ -504,7 +500,7 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </Card>
               <Card>
-                <Head icon="🔍" title={`전 지점 단기·중기·장기 비중 비교 (${primaryDT}${months.length?` · ${months.join(',')}월`:''})`} sub="단기=D-0~7 / 중기=D-8~30 / 장기=D-31+" />
+                <Head icon="🔍" title={`전 지점 단기·중기·장기 비중 비교 (${primaryDT}${months?` · ${months}월`:''})`} sub="단기=D-0~7 / 중기=D-8~30 / 장기=D-31+" />
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={allPropData} layout="vertical" barCategoryGap="20%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
