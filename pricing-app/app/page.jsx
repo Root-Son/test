@@ -1,7 +1,7 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts'
-import { supabase } from '../lib/supabase'
+import { supabase } from '../../lib/supabase'
 import {
   PROP_NAMES, LEAD_BANDS, OCC_BANDS, DATE_TYPES, DATE_TYPE_COLORS,
   BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DISTRIBUTION, PACE_BY_ROOMTYPE
