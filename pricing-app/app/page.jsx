@@ -138,8 +138,8 @@ export default function Dashboard() {
     { id: 'pace', label: '📈 페이스 분석' },
   ]
 
-  const PACE_BANDS = ['D-0~3', 'D-4~7', 'D-8~14', 'D-15~30', 'D-31~60', 'D-61~90', 'D-90+']
-  const PACE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1', '#a855f7']
+  const PACE_BANDS = ['D-0', 'D-1~10', 'D-11~30', 'D-31~60', 'D-61~90', 'D-90+']
+  const PACE_COLORS = ['#ef4444', '#f97316', '#f59e0b', '#22c55e', '#0ea5e9', '#6366f1']
 
   return (
     <div style={{ minHeight: '100vh', background: '#f1f5f9', fontFamily: "'Apple SD Gothic Neo','Noto Sans KR',sans-serif" }}>
