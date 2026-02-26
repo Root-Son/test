@@ -16,11 +16,12 @@ const calcPrice = (adr, lk, ok, mx, minP, maxP) => {
 const getADR = (revPAR, dt, dtMult) => revPAR ? Math.round((revPAR / 0.75) * (dtMult[dt] ?? 1)) : null
 const ratioColor = (r) => r >= 1.15 ? '#0ea5e9' : r >= 1.05 ? '#6366f1' : r >= 0.95 ? '#f59e0b' : '#ef4444'
 const fmtW = (v) => v ? `${(v / 10000).toFixed(1)}만` : '-'
-const makeRoomTypes = () => [
-  { id:'r1', name:'스탠다드', rooms:10, targetRevPAR:'', minPrice:0, maxPrice:0 },
-  { id:'r2', name:'디럭스',   rooms:6,  targetRevPAR:'', minPrice:0, maxPrice:0 },
-  { id:'r3', name:'스위트',   rooms:3,  targetRevPAR:'', minPrice:0, maxPrice:0 },
-]
+const makeRoomTypes = (propName) => {
+  const types = PROPERTIES_DATA[propName]?.roomTypes || ['스탠다드','디럭스','스위트']
+  return types.map((name, i) => ({
+    id: `r${i+1}`, name, rooms: 10, targetRevPAR: '', minPrice: 0, maxPrice: 0
+  }))
+}
 
 // ── 서브 컴포넌트 ────────────────────────────────────────────────────────────
 const Card = ({ children, style = {} }) => (
@@ -84,7 +85,7 @@ const RevPARInput = ({ value, onChange, label }) => {
 // ── 메인 ────────────────────────────────────────────────────────────────────
 export default function Dashboard() {
   const [propName, setPropName] = useState(PROP_NAMES[0])
-  const [roomTypes, setRoomTypes] = useState(() => Object.fromEntries(PROP_NAMES.map(p => [p, makeRoomTypes()])))
+  const [roomTypes, setRoomTypes] = useState(() => Object.fromEntries(PROP_NAMES.map(p => [p, makeRoomTypes(p)])))
   const [roomId, setRoomId] = useState('r1')
   const [dateType, setDateType] = useState('평일')
   const [matrix, setMatrix] = useState(BASE_MATRIX)
@@ -170,29 +171,42 @@ export default function Dashboard() {
   return (
     <div style={{ minHeight:'100vh', background:'#f1f5f9', fontFamily:"'Apple SD Gothic Neo','Noto Sans KR',sans-serif" }}>
       {/* 헤더 */}
-      <div style={{ background:'#0f172a', padding:'24px 36px 0' }}>
+      <div style={{ background:'#0f172a', padding:'20px 36px 0', borderBottom:'1px solid #1e293b' }}>
         <div style={{ maxWidth:1120, margin:'0 auto' }}>
-          <div style={{ display:'flex', alignItems:'flex-end', justifyContent:'space-between' }}>
-            <div>
-              <div style={{ fontSize:10, letterSpacing:3, color:'#475569', fontFamily:"'DM Mono',monospace", marginBottom:5, textTransform:'uppercase' }}>Smart Pricing Engine · 3년 실데이터 기반</div>
-              <h1 style={{ margin:0, fontSize:24, fontWeight:800, color:'#f8fafc', letterSpacing:-0.5 }}>스마트 프라이싱 매크로</h1>
-              <p style={{ color:'#64748b', margin:'4px 0 0', fontSize:12 }}>지점별 목표 RevPAR 입력 → 요금 테이블 자동 생성 → CM push</p>
+          {/* 타이틀 + 버튼 */}
+          <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between', marginBottom:16 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:16 }}>
+              <div>
+                <div style={{ fontSize:11, letterSpacing:2, color:'#475569', fontFamily:"'DM Mono',monospace", textTransform:'uppercase', marginBottom:4 }}>Handys</div>
+                <h1 style={{ margin:0, fontSize:22, fontWeight:800, color:'#f8fafc', letterSpacing:-0.5, lineHeight:1 }}>Pricing 전략</h1>
+              </div>
+              <div style={{ width:1, height:32, background:'#334155' }} />
+              <div style={{ fontSize:11, color:'#475569', lineHeight:1.7 }}>
+                목표 RevPAR 입력 → 요금 테이블 자동 생성<br/>
+                <span style={{ color:'#334155' }}>3년 실데이터 기반 · 28개 지점</span>
+              </div>
             </div>
-            <div style={{ display:'flex', gap:8, alignItems:'center', paddingBottom:8 }}>
-              {inputProgress.map(p => (
-                <div key={p.name} title={p.name} onClick={() => setPropName(p.name)} style={{ width:28, height:28, borderRadius:6, fontSize:14, display:'flex', alignItems:'center', justifyContent:'center', background:p.filled===p.total?'#10b981':p.filled>0?'#f59e0b':'#1e293b', border:p.name===propName?'2px solid #7dd3fc':'2px solid transparent', cursor:'pointer' }}>
-                  {PROPERTIES_DATA[p.name].emoji}
-                </div>
-              ))}
-              <a href="/admin" style={{ marginLeft:8, padding:'6px 14px', borderRadius:8, background:'#334155', color:'#94a3b8', fontSize:11, fontWeight:700, textDecoration:'none' }}>📤 데이터 업로드</a>
-            </div>
+            <a href="/admin" style={{ padding:'8px 16px', borderRadius:8, background:'#1e293b', color:'#64748b', fontSize:12, fontWeight:700, textDecoration:'none', border:'1px solid #334155', whiteSpace:'nowrap' }}>
+              📤 데이터 업로드
+            </a>
           </div>
-          <div style={{ display:'flex', gap:3, marginTop:16, flexWrap:'wrap' }}>
+          {/* 지점 탭 */}
+          <div style={{ display:'flex', gap:2, flexWrap:'wrap' }}>
             {PROP_NAMES.map(p => {
               const prog = inputProgress.find(x=>x.name===p)
+              const isActive = propName === p
               return (
-                <button key={p} onClick={() => setPropName(p)} style={{ padding:'7px 12px', borderRadius:'7px 7px 0 0', border:'none', cursor:'pointer', fontWeight:700, fontSize:11, fontFamily:'inherit', background:propName===p?'#f1f5f9':'rgba(255,255,255,0.06)', color:propName===p?'#0f172a':'#64748b' }}>
-                  {PROPERTIES_DATA[p].emoji} {p.replace('점','')}{prog.filled===prog.total&&<span style={{marginLeft:4,color:'#10b981'}}>✓</span>}
+                <button key={p} onClick={() => setPropName(p)} style={{
+                  padding:'6px 10px', border:'none', cursor:'pointer',
+                  fontWeight:isActive?700:500, fontSize:11, fontFamily:'inherit',
+                  borderRadius:'6px 6px 0 0',
+                  background: isActive ? '#f1f5f9' : 'transparent',
+                  color: isActive ? '#0f172a' : '#64748b',
+                  borderBottom: isActive ? 'none' : '1px solid transparent',
+                  whiteSpace:'nowrap',
+                }}>
+                  {PROPERTIES_DATA[p].emoji} {p.replace(/점$/, '')}
+                  {prog.filled===prog.total && <span style={{marginLeft:3, color:'#10b981', fontSize:9}}>●</span>}
                 </button>
               )
             })}
