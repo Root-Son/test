@@ -1,11 +1,11 @@
 'use client'
 import { useState, useMemo, useEffect } from 'react'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, Legend } from 'recharts'
-import { supabase } from '../../lib/supabase'
+import { supabase } from '../lib/supabase'
 import {
   PROP_NAMES, LEAD_BANDS, OCC_BANDS, DATE_TYPES, DATE_TYPE_COLORS,
-  BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DISTRIBUTION, PACE_BY_ROOMTYPE
-} from '../../lib/analysisData'
+  BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DETAIL
+} from '../lib/analysisData'
 
 const clamp = (v, mn, mx) => Math.min(mx, Math.max(mn, v))
 const calcPrice = (adr, lk, ok, mx, minP, maxP) => {
@@ -70,7 +70,8 @@ export default function Dashboard() {
   const [propName, setPropName] = useState(PROP_NAMES[0])
   const [roomTypes, setRoomTypes] = useState(() => Object.fromEntries(PROP_NAMES.map(p => [p, makeRoomTypes(p)])))
   const [roomId, setRoomId] = useState('r0')
-  const [dateType, setDateType] = useState('평일')
+  const [dateTypes, setDateTypes] = useState(['평일'])
+  const [months, setMonths] = useState([])
   const [matrix, setMatrix] = useState(BASE_MATRIX)
   const [tab, setTab] = useState('pace')
   const [liveOCC, setLiveOCC] = useState(35)
@@ -87,6 +88,7 @@ export default function Dashboard() {
   const room = rooms?.find(r => r.id === roomId) || rooms?.[0]
   const revPAR = room?.targetRevPAR
   const hasRevPAR = revPAR && revPAR > 0
+  const dateType = dateTypes[0] || '평일'
   const baseADR = useMemo(() => getADR(revPAR, dateType, prop.dtMult), [revPAR, dateType, prop])
 
   const priceTable = useMemo(() => {
@@ -208,21 +210,7 @@ export default function Dashboard() {
               </button>
             )
           })}
-          <div style={{ width: 1, height: 20, background: '#e2e8f0', margin: '0 4px' }} />
-          {DATE_TYPES.map(dt => {
-            const c = DATE_TYPE_COLORS[dt]
-            return (
-              <button key={dt} onClick={() => setDateType(dt)} style={{
-                padding: '5px 12px', borderRadius: 7,
-                border: `1.5px solid ${dateType === dt ? c : '#e2e8f0'}`,
-                background: dateType === dt ? `${c}15` : '#fff',
-                color: dateType === dt ? c : '#64748b',
-                fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit',
-              }}>
-                {dt} <span style={{ fontSize: 10, opacity: 0.7 }}>×{prop.dtMult[dt]}</span>
-              </button>
-            )
-          })}
+
           {hasRevPAR && <span style={{ marginLeft: 'auto', fontSize: 12, color: '#94a3b8' }}>기준 ADR: <Mono>{baseADR?.toLocaleString()}원</Mono></span>}
         </div>
 
@@ -432,28 +420,72 @@ export default function Dashboard() {
 
         {/* ── 페이스 분석 ── */}
         {tab === 'pace' && (() => {
-          const roomPace = PACE_BY_ROOMTYPE[propName]?.[room?.name]
-          const activePace = roomPace || PACE_DISTRIBUTION[propName]
-          const distData = PACE_BANDS.map(band => { const row = { band }; DATE_TYPES.forEach(dt => { row[dt] = activePace?.[dt]?.[band] ?? 0 }); return row })
-          const allPropData = PROP_NAMES.map(p => ({
-            name: p.replace(/점$/, ''), fullName: p,
-            단기: (PACE_DISTRIBUTION[p]?.[dateType]?.['D-0~3'] ?? 0) + (PACE_DISTRIBUTION[p]?.[dateType]?.['D-4~7'] ?? 0),
-            중기: (PACE_DISTRIBUTION[p]?.[dateType]?.['D-8~14'] ?? 0) + (PACE_DISTRIBUTION[p]?.[dateType]?.['D-15~30'] ?? 0),
-            장기: (PACE_DISTRIBUTION[p]?.[dateType]?.['D-31~60'] ?? 0) + (PACE_DISTRIBUTION[p]?.[dateType]?.['D-61~90'] ?? 0) + (PACE_DISTRIBUTION[p]?.[dateType]?.['D-90+'] ?? 0),
-          })).sort((a, b) => b.단기 - a.단기)
+          // 날짜유형 × 월 조합 데이터 계산
+          const getFilteredDist = (pName, dtList, mList) => {
+            const src = PACE_DETAIL[pName]
+            if (!src) return null
+            const bands = ['D-0','D-1~10','D-11~30','D-31~60','D-61~90','D-90+']
+            const result = {}
+            dtList.forEach(dt => {
+              if (!src[dt]) return
+              const monthKey = mList.length === 1 ? String(mList[0]) : 'all'
+              const raw = mList.length === 0 ? src[dt]['all'] :
+                mList.length === 1 ? (src[dt][String(mList[0])] || src[dt]['all']) :
+                // 복수 월 선택 시 평균
+                (() => {
+                  const valid = mList.map(m => src[dt][String(m)]).filter(Boolean)
+                  if (!valid.length) return src[dt]['all']
+                  const avg = {}
+                  bands.forEach(b => { avg[b] = Math.round(valid.reduce((s,d) => s+(d[b]||0),0)/valid.length*10)/10 })
+                  return avg
+                })()
+              result[dt] = raw || {}
+            })
+            return result
+          }
+          const activeDTs = dateTypes.length ? dateTypes : ['평일']
+          const activePace = getFilteredDist(propName, activeDTs, months)
+          const distData = PACE_BANDS.map(band => {
+            const row = { band }
+            activeDTs.forEach(dt => { row[dt] = activePace?.[dt]?.[band] ?? 0 })
+            return row
+          })
+          const primaryDT = activeDTs[0] || '평일'
+          const allPropData = PROP_NAMES.map(p => {
+            const pd = PACE_DETAIL[p]?.[primaryDT]?.['all'] || {}
+            return { name: p.replace(/점$/, ''), fullName: p,
+              단기: (pd['D-0']||0) + (pd['D-1~10']||0),
+              중기: (pd['D-11~30']||0),
+              장기: (pd['D-31~60']||0) + (pd['D-61~90']||0) + (pd['D-90+']||0),
+            }
+          }).sort((a, b) => b.단기 - a.단기)
           return (
             <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
               <InsightBar propName={propName} />
               <Card>
-                <Head icon="📊" title={`${propName} · ${room?.name} — 리드타임별 예약 점유율`} sub={roomPace ? `${room?.name} 실데이터 기반` : "지점 전체 평균 (해당 룸타입 데이터 부족 시)"} />
-                <div style={{ display: 'flex', gap: 8, marginBottom: 20 }}>
-                  {DATE_TYPES.map(dt => { const c = DATE_TYPE_COLORS[dt]; return (<button key={dt} onClick={() => setDateType(dt)} style={{ padding: '6px 16px', borderRadius: 8, border: `1.5px solid ${dateType === dt ? c : '#e2e8f0'}`, background: dateType === dt ? `${c}18` : '#fff', color: dateType === dt ? c : '#64748b', fontWeight: 700, fontSize: 12, cursor: 'pointer', fontFamily: 'inherit' }}>{dt}</button>) })}
+                <Head icon="📊" title={`${propName} · ${room?.name} — 리드타임별 예약 점유율`} sub="날짜유형·월 복수 선택 가능 — 예: 7월+8월+주말" />
+                {/* 날짜유형 + 월 복수 필터 */}
+                <div style={{ display:'flex', flexWrap:'wrap', gap:6, marginBottom:16, alignItems:'center' }}>
+                  <span style={{ fontSize:11, fontWeight:700, color:'#64748b', marginRight:2 }}>날짜유형</span>
+                  {DATE_TYPES.map(dt => {
+                    const c = DATE_TYPE_COLORS[dt]; const on = dateTypes.includes(dt)
+                    return <button key={dt} onClick={() => toggleDT(dt)} style={{ padding:'5px 14px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', border:`1.5px solid ${on?c:'#e2e8f0'}`, background:on?`${c}18`:'#fff', color:on?c:'#94a3b8', fontWeight:on?700:500, fontSize:12 }}>{dt}</button>
+                  })}
+                  <div style={{ width:1, height:20, background:'#e2e8f0', margin:'0 4px' }} />
+                  <span style={{ fontSize:11, fontWeight:700, color:'#64748b', marginRight:2 }}>월</span>
+                  {[1,2,3,4,5,6,7,8,9,10,11,12].map(m => {
+                    const on = months.includes(m)
+                    return <button key={m} onClick={() => toggleMonth(m)} style={{ padding:'5px 8px', borderRadius:8, cursor:'pointer', fontFamily:'inherit', border:`1.5px solid ${on?'#6366f1':'#e2e8f0'}`, background:on?'#eef2ff':'#fff', color:on?'#6366f1':'#94a3b8', fontWeight:on?700:500, fontSize:11, minWidth:34 }}>{m}월</button>
+                  })}
+                  {(dateTypes.length !== 1 || dateTypes[0] !== '평일' || months.length > 0) && (
+                    <button onClick={() => { setDateTypes(['평일']); setMonths([]) }} style={{ padding:'5px 10px', borderRadius:8, border:'1px solid #fca5a5', background:'#fef2f2', color:'#ef4444', fontSize:11, fontWeight:700, cursor:'pointer', fontFamily:'inherit' }}>초기화</button>
+                  )}
                 </div>
                 <div style={{ display: 'flex', height: 52, borderRadius: 10, overflow: 'hidden', gap: 2, marginBottom: 10 }}>
-                  {PACE_BANDS.map((band, i) => { const val = activePace?.[dateType]?.[band] ?? 0; if (val < 0.5) return null; return (<div key={band} style={{ width: `${val}%`, background: PACE_COLORS[i], display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1, transition: 'width 0.4s ease' }}>{val >= 6 && <><span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{val}%</span><span style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)' }}>{band}</span></>}</div>) })}
+                  {PACE_BANDS.map((band, i) => { const val = activePace?.[primaryDT]?.[band] ?? 0; if (val < 0.5) return null; return (<div key={band} style={{ width: `${val}%`, background: PACE_COLORS[i], display: 'flex', alignItems: 'center', justifyContent: 'center', flexDirection: 'column', gap: 1, transition: 'width 0.4s ease' }}>{val >= 6 && <><span style={{ fontSize: 11, fontWeight: 800, color: '#fff' }}>{val}%</span><span style={{ fontSize: 9, color: 'rgba(255,255,255,0.75)' }}>{band}</span></>}</div>) })}
                 </div>
                 <div style={{ display: 'flex', gap: 10, marginBottom: 20, flexWrap: 'wrap' }}>
-                  {PACE_BANDS.map((band, i) => { const val = activePace?.[dateType]?.[band] ?? 0; return (<span key={band} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: PACE_COLORS[i], display: 'inline-block' }} /><span style={{ color: '#374151', fontWeight: 600 }}>{band}</span><span style={{ color: '#94a3b8' }}>{val}%</span></span>) })}
+                  {PACE_BANDS.map((band, i) => { const val = activePace?.[primaryDT]?.[band] ?? 0; return (<span key={band} style={{ fontSize: 11, display: 'flex', alignItems: 'center', gap: 4 }}><span style={{ width: 10, height: 10, borderRadius: 3, background: PACE_COLORS[i], display: 'inline-block' }} /><span style={{ color: '#374151', fontWeight: 600 }}>{band}</span><span style={{ color: '#94a3b8' }}>{val}%</span></span>) })}
                 </div>
                 <ResponsiveContainer width="100%" height={240}>
                   <BarChart data={distData} barGap={3} barCategoryGap="25%">
@@ -461,12 +493,12 @@ export default function Dashboard() {
                     <XAxis dataKey="band" tick={{ fontSize: 11, fill: '#64748b' }} />
                     <YAxis tickFormatter={v => v + '%'} domain={[0, 60]} tick={{ fontSize: 10, fill: '#94a3b8' }} />
                     <Tooltip content={<TT />} formatter={v => [`${v}%`]} /><Legend />
-                    {DATE_TYPES.map(dt => <Bar key={dt} dataKey={dt} fill={DATE_TYPE_COLORS[dt]} radius={[4, 4, 0, 0]} opacity={dateType === dt ? 1 : 0.35} />)}
+                    {DATE_TYPES.map(dt => <Bar key={dt} dataKey={dt} fill={DATE_TYPE_COLORS[dt]} radius={[4, 4, 0, 0]} opacity={activeDTs.includes(dt) ? 1 : 0.35} />)}
                   </BarChart>
                 </ResponsiveContainer>
               </Card>
               <Card>
-                <Head icon="🔍" title={`전 지점 단기·중기·장기 비중 비교 (${dateType})`} sub="단기=D-0~7 / 중기=D-8~30 / 장기=D-31+" />
+                <Head icon="🔍" title={`전 지점 단기·중기·장기 비중 비교 (${primaryDT}${months.length?` · ${months.join(',')}월`:''})`} sub="단기=D-0~7 / 중기=D-8~30 / 장기=D-31+" />
                 <ResponsiveContainer width="100%" height={400}>
                   <BarChart data={allPropData} layout="vertical" barCategoryGap="20%">
                     <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" horizontal={false} />
