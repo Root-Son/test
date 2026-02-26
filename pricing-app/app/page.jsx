@@ -72,7 +72,7 @@ export default function Dashboard() {
   const [roomId, setRoomId] = useState('r0')
   const [dateType, setDateType] = useState('평일')
   const [matrix, setMatrix] = useState(BASE_MATRIX)
-  const [tab, setTab] = useState('revpar')
+  const [tab, setTab] = useState('pace')
   const [liveOCC, setLiveOCC] = useState(35)
   const [liveDays, setLiveDays] = useState(20)
 
@@ -131,11 +131,11 @@ export default function Dashboard() {
   }))
 
   const TABS = [
+    { id: 'pace', label: '📈 페이스 분석' },
     { id: 'revpar', label: '✏️ RevPAR 입력' },
     { id: 'table', label: '📋 요금 테이블' },
     { id: 'simulate', label: '📊 RevPAR 시뮬' },
     { id: 'live', label: '⚡ 실시간 조회' },
-    { id: 'pace', label: '📈 페이스 분석' },
   ]
 
   const PACE_BANDS = ['D-0', 'D-1~10', 'D-11~30', 'D-31~60', 'D-61~90', 'D-90+']
