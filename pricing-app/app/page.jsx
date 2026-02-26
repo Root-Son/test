@@ -4,7 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { supabase } from '../lib/supabase'
 import {
   PROP_NAMES, LEAD_BANDS, OCC_BANDS, DATE_TYPES, DATE_TYPE_COLORS,
-  BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DETAIL
+  BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DETAIL, PACE_BY_ROOMTYPE
 } from '../lib/analysisData'
 
 const clamp = (v, mn, mx) => Math.min(mx, Math.max(mn, v))
@@ -72,6 +72,12 @@ export default function Dashboard() {
   const [roomId, setRoomId] = useState('r0')
   const [dateTypes, setDateTypes] = useState(['평일'])
   const [months, setMonths] = useState([])
+  const toggleDT = (dt) => setDateTypes(prev =>
+    prev.includes(dt) ? (prev.length > 1 ? prev.filter(x => x !== dt) : prev) : [...prev, dt]
+  )
+  const toggleMonth = (m) => setMonths(prev =>
+    prev.includes(m) ? prev.filter(x => x !== m) : [...prev, m]
+  )
   const [matrix, setMatrix] = useState(BASE_MATRIX)
   const [tab, setTab] = useState('pace')
   const [liveOCC, setLiveOCC] = useState(35)
@@ -421,8 +427,8 @@ export default function Dashboard() {
         {/* ── 페이스 분석 ── */}
         {tab === 'pace' && (() => {
           // 날짜유형 × 월 조합 데이터 계산
-          const getFilteredDist = (pName, dtList, mList) => {
-            const src = PACE_DETAIL[pName]
+          const getFilteredDist = (pName, dtList, mList, roomName) => {
+            const src = (roomName && PACE_BY_ROOMTYPE[pName]?.[roomName]) || PACE_DETAIL[pName]
             if (!src) return null
             const bands = ['D-0','D-1~10','D-11~30','D-31~60','D-61~90','D-90+']
             const result = {}
@@ -444,7 +450,7 @@ export default function Dashboard() {
             return result
           }
           const activeDTs = dateTypes.length ? dateTypes : ['평일']
-          const activePace = getFilteredDist(propName, activeDTs, months)
+          const activePace = getFilteredDist(propName, activeDTs, months, room?.name)
           const distData = PACE_BANDS.map(band => {
             const row = { band }
             activeDTs.forEach(dt => { row[dt] = activePace?.[dt]?.[band] ?? 0 })
