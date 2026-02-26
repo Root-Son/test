@@ -5,7 +5,7 @@ import { supabase } from '../../lib/supabase'
 import {
   PROP_NAMES, LEAD_BANDS, OCC_BANDS, DATE_TYPES, DATE_TYPE_COLORS,
   BASE_MATRIX, PROPERTIES_DATA, PROPERTY_INSIGHTS, PACE_DISTRIBUTION, PACE_BY_ROOMTYPE
-} from '../lib/analysisData'
+} from '../../lib/analysisData'
 
 const clamp = (v, mn, mx) => Math.min(mx, Math.max(mn, v))
 const calcPrice = (adr, lk, ok, mx, minP, maxP) => {
