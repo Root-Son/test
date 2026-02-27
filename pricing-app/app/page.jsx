@@ -169,7 +169,7 @@ export default function Dashboard() {
 
           {/* 지점 탭 — 두 줄로 깔끔하게 */}
           <div style={{ display: 'flex', gap: 4, flexWrap: 'wrap', paddingBottom: 0 }}>
-            {PROP_NAMES.map(p => {
+            {[...PROP_NAMES].sort((a,b) => a.localeCompare(b, 'ko')).map(p => {
               const prog = inputProgress.find(x => x.name === p)
               const isDone = prog.filled === prog.total && prog.total > 0
               const isActive = propName === p
