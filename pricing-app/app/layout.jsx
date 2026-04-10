@@ -1,14 +1,14 @@
 import './globals.css'
 
 export const metadata = {
-  title: '스마트 프라이싱 엔진',
-  description: '3년 실데이터 기반 지점별 요금 최적화',
+  title: '지점별 리드타임 분포',
+  description: 'Handys 호텔 지점별 예약 리드타임 분포 대시보드',
 }
 
 export default function RootLayout({ children }) {
   return (
     <html lang="ko">
-      <body>{children}</body>
+      <body className="bg-slate-950 text-slate-200 min-h-screen">{children}</body>
     </html>
   )
 }
