@@ -3,9 +3,7 @@ import { duckQuery } from "@/lib/duck";
 
 export const dynamic = "force-dynamic";
 
-// unicode escape로 한글 인코딩 이슈 방지
-const EV = "\uC7AC\uC2E4"; // 재실
-
+// oc_rn > 0 으로 재실 이벤트 필터 (한글 event 필터 시 unicode 에러 우회)
 const LT_CTE = `
   WITH lt_raw AS (
     SELECT
@@ -13,7 +11,7 @@ const LT_CTE = `
       b_name,
       DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) AS lt
     FROM fact_reservation_event
-    WHERE event = '${EV}'
+    WHERE oc_rn > 0
       AND isSales = true
       AND date >= CURRENT_DATE - INTERVAL '180' DAY
       AND date < CURRENT_DATE
