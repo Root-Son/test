@@ -5,12 +5,12 @@ import {
   ResponsiveContainer, Cell, PieChart, Pie
 } from 'recharts'
 
-const BAND_ORDER = ['D-0', 'D-1to3', 'D-4to7', 'D-8to14', 'D-15to30', 'D-31to60', 'D-61to90', 'D-90plus']
+const BAND_ORDER = ['D0', 'D1', 'D4', 'D8', 'D15', 'D31', 'D61', 'D90']
 const BAND_COLORS = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#6b7280']
 const BAND_DISPLAY = ['D-0', 'D-1~3', 'D-4~7', 'D-8~14', 'D-15~30', 'D-31~60', 'D-61~90', 'D-90+']
 const BAND_LABELS = {
-  'D-0': '당일', 'D-1to3': '1~3일', 'D-4to7': '4~7일', 'D-8to14': '1~2주',
-  'D-15to30': '2~4주', 'D-31to60': '1~2개월', 'D-61to90': '2~3개월', 'D-90plus': '3개월+',
+  'D0': '당일', 'D1': '1~3일', 'D4': '4~7일', 'D8': '1~2주',
+  'D15': '2~4주', 'D31': '1~2개월', 'D61': '2~3개월', 'D90': '3개월+',
 }
 
 export default function Page() {
