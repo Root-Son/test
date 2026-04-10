@@ -3,7 +3,6 @@ import { duckQuery } from "@/lib/duck";
 
 export const dynamic = "force-dynamic";
 
-// oc_rn > 0 으로 재실 이벤트 필터 (한글 event 필터 시 unicode 에러 우회)
 const LT_CTE = `
   WITH lt_raw AS (
     SELECT
@@ -27,13 +26,13 @@ export async function GET() {
           branchId, b_name,
           CASE
             WHEN lt = 0 THEN 'D-0'
-            WHEN lt BETWEEN 1 AND 3 THEN 'D-1~3'
-            WHEN lt BETWEEN 4 AND 7 THEN 'D-4~7'
-            WHEN lt BETWEEN 8 AND 14 THEN 'D-8~14'
-            WHEN lt BETWEEN 15 AND 30 THEN 'D-15~30'
-            WHEN lt BETWEEN 31 AND 60 THEN 'D-31~60'
-            WHEN lt BETWEEN 61 AND 90 THEN 'D-61~90'
-            ELSE 'D-90+'
+            WHEN lt BETWEEN 1 AND 3 THEN 'D-1to3'
+            WHEN lt BETWEEN 4 AND 7 THEN 'D-4to7'
+            WHEN lt BETWEEN 8 AND 14 THEN 'D-8to14'
+            WHEN lt BETWEEN 15 AND 30 THEN 'D-15to30'
+            WHEN lt BETWEEN 31 AND 60 THEN 'D-31to60'
+            WHEN lt BETWEEN 61 AND 90 THEN 'D-61to90'
+            ELSE 'D-90plus'
           END AS band,
           COUNT(*) AS cnt,
           ROUND(AVG(lt), 1) AS avg_lt

@@ -1,4 +1,4 @@
-/* duck API 클라이언트 (서비스 계정 인증) */
+/* duck API client - service account auth */
 
 const DUCK_URL = process.env.DUCK_URL || "https://duck.plott.co.kr";
 const KC_URL  = process.env.KEYCLOAK_URL || "https://auth.plott.co.kr";
