@@ -1,10 +1,10 @@
 /* duck API client - service account auth */
 
-const DUCK_URL = process.env.DUCK_URL || "https://duck.plott.co.kr";
-const KC_URL  = process.env.KEYCLOAK_URL || "https://auth.plott.co.kr";
-const KC_REALM = process.env.KEYCLOAK_REALM || "plott";
+const DUCK_URL = "https://duck.plott.co.kr";
+const KC_URL  = "https://auth.plott.co.kr";
+const KC_REALM = "plott";
 const SA_CLIENT_ID = "plott-sandbox-service-account";
-const SA_CLIENT_SECRET = process.env.DUCK_SA_SECRET || "ShscGDeRHvrHz9mt3fxe4m5a7U0KQ0Lo";
+const SA_CLIENT_SECRET = "ShscGDeRHvrHz9mt3fxe4m5a7U0KQ0Lo";
 
 let cached = null;
 
@@ -19,7 +19,10 @@ async function getToken() {
       client_secret: SA_CLIENT_SECRET,
     }),
   });
-  if (!res.ok) throw new Error(`SA token error ${res.status}`);
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`keycloak token error ${res.status}: ${text.slice(0, 200)}`);
+  }
   const data = await res.json();
   cached = { token: data.access_token, expiresAt: Date.now() + (data.expires_in - 60) * 1000 };
   return cached.token;
@@ -31,13 +34,13 @@ export async function duckQuery(sql) {
     method: "POST",
     headers: {
       Authorization: `Bearer ${token}`,
-      "Content-Type": "application/json",
+      "Content-Type": "application/json; charset=utf-8",
     },
     body: JSON.stringify({ sql }),
   });
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    throw new Error(`duck error ${res.status}: ${text.slice(0, 300)}`);
+    throw new Error(`duck query error ${res.status}: ${text.slice(0, 300)}`);
   }
   const data = await res.json();
   return data.rows ?? data.result ?? data ?? [];
