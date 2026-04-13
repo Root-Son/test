@@ -3,20 +3,27 @@ import { duckQuery } from "@/lib/duck";
 
 export const dynamic = "force-dynamic";
 
+// exclude: 장기안정형 + 종료 지점
+const EXCLUDE_BRANCH_IDS = ['22','23','24','25','26','31','33','44','47'];
+const EXCLUDE_SQL = `AND branchId NOT IN ('${EXCLUDE_BRANCH_IDS.join("','")}')`;
+
 export async function GET() {
   try {
+    const ltCte = `
+      WITH lt_raw AS (
+        SELECT branchId,
+          DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) AS lt
+        FROM fact_reservation_event
+        WHERE oc_rn > 0 AND isSales = true
+          AND date >= CURRENT_DATE - INTERVAL '180' DAY
+          AND date < CURRENT_DATE
+          AND reservedAt IS NOT NULL
+          AND DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) >= 0
+          ${EXCLUDE_SQL}
+      )`;
+
     const [distRaw, sumRaw, branchList] = await Promise.all([
-      duckQuery(`
-        WITH lt_raw AS (
-          SELECT branchId,
-            DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) AS lt
-          FROM fact_reservation_event
-          WHERE oc_rn > 0 AND isSales = true
-            AND date >= CURRENT_DATE - INTERVAL '180' DAY
-            AND date < CURRENT_DATE
-            AND reservedAt IS NOT NULL
-            AND DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) >= 0
-        )
+      duckQuery(`${ltCte}
         SELECT branchId,
           CASE
             WHEN lt = 0 THEN 'D0'
@@ -33,17 +40,7 @@ export async function GET() {
         FROM lt_raw
         GROUP BY branchId, band
       `),
-      duckQuery(`
-        WITH lt_raw AS (
-          SELECT branchId,
-            DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) AS lt
-          FROM fact_reservation_event
-          WHERE oc_rn > 0 AND isSales = true
-            AND date >= CURRENT_DATE - INTERVAL '180' DAY
-            AND date < CURRENT_DATE
-            AND reservedAt IS NOT NULL
-            AND DATE_DIFF('day', CAST(reservedAt AS DATE), CAST(date AS DATE)) >= 0
-        )
+      duckQuery(`${ltCte}
         SELECT branchId,
           COUNT(*) AS total,
           ROUND(AVG(lt), 1) AS avg_lt,
@@ -52,10 +49,9 @@ export async function GET() {
         FROM lt_raw
         GROUP BY branchId
       `),
-      duckQuery(`SELECT id, name FROM dim_branch`),
+      duckQuery(`SELECT id, name FROM dim_branch WHERE id NOT IN ('${EXCLUDE_BRANCH_IDS.join("','")}')`),
     ]);
 
-    // branchId -> name mapping
     const nameMap = {};
     for (const b of branchList) nameMap[b.id] = b.name;
 
